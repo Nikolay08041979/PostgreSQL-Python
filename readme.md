@@ -8,7 +8,7 @@
 3) email,
 4) телефон. может быть не один или не быть вообще
 
-[Архитектура БД](https://github.com/Nikolay08041979/PostgreSQL-Python/blob/master/client_db.gif)
+#### [архитектура БД](https://github.com/Nikolay08041979/PostgreSQL-Python/blob/master/client_db.gif)
 
 ### Необходимо разработать структуру БД для хранения информации и несколько функций на Python для управления данными.
 
@@ -26,4 +26,4 @@
 
 ✅ Функция, позволяющая найти клиента по его данным: имени, фамилии, email или телефону.
 
-### [файл с кодом](https://github.com/Nikolay08041979/PostgreSQL-Python/blob/master/main.py)
+#### [файл с кодом rel#2](https://github.com/Nikolay08041979/PostgreSQL-Python/blob/master/main.py)
