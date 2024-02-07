@@ -64,23 +64,31 @@ def add_phone(client_id, phone_number):
         cur.execute("""
             SELECT * FROM phones
             WHERE client_id = %s;""", (client_id,))
-        phone_list_current = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
-        if len(phone_list_current) == 5:
-            return 'Достигнуто максимальное количество номеров телефонов. Воспользуйтесь функцией удаления или изменения номера телефона'
-        elif phone_number in phone_list_current:
-            return f'Номер телефона {phone_number} уже есть в базе данных'
-        else:
+        phone_list_check = cur.fetchone()
+        if phone_list_check is not None:
+            phone_list_current = [phone for phone in list(phone_list_check[2:]) if phone is not None]
+            if len(phone_list_current) == 5:
+                return 'Достигнуто максимальное количество номеров телефонов. Воспользуйтесь функцией удаления или изменения номера телефона'
+            elif phone_number in phone_list_current:
+                return f'Номер телефона {phone_number} уже есть в базе данных'
+            else: # if len(phone_list_current) < 5:
+                cur.execute("""
+                    UPDATE phones
+                    SET phone%s = %s
+                    WHERE client_id = %s;""", (len(phone_list_current)+1, phone_number, client_id))
+                conn.commit()
+                print(f'Номер телефона {phone_number} был успешно добавлен в базу данных')
+                cur.execute("""
+                    SELECT * FROM phones
+                    WHERE client_id = %s;""", (client_id,))
+                phone_list_updated = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
+                return f'Актуальные номера телефонов клиента #{client_id}: {", ".join(phone_list_updated)}'
+        else: # if phone_list_check is None:
             cur.execute("""
-                UPDATE phones
-                SET phone%s = %s
-                WHERE client_id = %s;""", (len(phone_list_current)+1, phone_number, client_id))
+                INSERT INTO phones (phone1, client_id)
+                VALUES (%s, %s);""", (phone_number, client_id))
             conn.commit()
-            print(f'Номер телефона {phone_number} был успешно добавлен в базу данных')
-            cur.execute("""
-                SELECT * FROM phones
-                WHERE client_id = %s;""", (client_id,))
-            phone_list_updated = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
-            return f'Актуальные номера телефонов клиента #{client_id}: {", ".join(phone_list_updated)}'
+            return f'Номер телефона {phone_number} был успешно внесен в базу данных'
     conn.close()
 
 
@@ -174,7 +182,6 @@ def find_client(first_name=None, last_name=None, email=None, phone=None):
             cur.execute(f"""
                 SELECT * FROM client
                 WHERE {search_query};""", tuple(search_dict.values()))
-
             client_found_all = cur.fetchall()
 
             if len(client_found_all) == 0:
@@ -185,7 +192,8 @@ def find_client(first_name=None, last_name=None, email=None, phone=None):
                 cur.execute("""
                     SELECT * FROM phones
                     WHERE client_id = %s;""", (client_id,))
-                phone_found = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
+                phone_list_check = cur.fetchone()
+                phone_found = [phone for phone in list(phone_list_check[2:]) if phone is not None]
                 return f'По вашему запросу найден клиент #{client_found_all[0][0]}: имя: {client_found_all[0][1]}, фамилия: {client_found_all[0][2]}, email: {client_found_all[0][3]}, телефоны: {(", ").join(phone_found)}'
 
             else: # if len(client_found_all) > 1:
@@ -224,7 +232,6 @@ def find_client(first_name=None, last_name=None, email=None, phone=None):
                      OR phone3 = %s
                      OR phone4 = %s
                      OR phone5 = %s;""", (phone, phone, phone, phone, phone))
-
                 phone_found_all = cur.fetchall()
 
                 if len(phone_found_all) == 0:
@@ -246,8 +253,8 @@ def find_client(first_name=None, last_name=None, email=None, phone=None):
 #print(create_db())
 #print(add_client('Виолетта' , 'Мазур', 'mouse2000@gmail.com', '+73333333333,+7444444444,+7222222222'))
 #print(change_client(58, 'Виолетта' , 'Мартыновка', 'mouse000000@mail.ru', '+7000000000,+7123456789,+7987654321'))
-#print(add_phone(60, '+7555555555'))
+#print(add_phone(59, '+7555555555'))
 #print(delete_phone(58, '+7222222222'))
-#print(delete_client(60))
-#print(find_client('Виолетта', 'Мартыновка', None, '+7555555555'))
+#print(delete_client(58))
+#print(find_client('Виолетта', 'Мартыновка', None, None))
 
