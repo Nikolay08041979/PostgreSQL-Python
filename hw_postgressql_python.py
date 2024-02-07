@@ -1,6 +1,6 @@
 import psycopg2
 
-conn = psycopg2.connect(database="client_db", user="postgres", password="Liza@26052008?")
+conn = psycopg2.connect(database="client_db", user="postgres", password="12345")
 
 def create_db():
     with conn.cursor() as cur:
