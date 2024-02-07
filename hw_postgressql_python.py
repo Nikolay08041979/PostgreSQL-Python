@@ -1,6 +1,6 @@
 import psycopg2
 
-conn = psycopg2.connect(database="client_db", user="postgres", password="12345")
+conn = psycopg2.connect(database="client_db", user="postgres", password="Liza@26052008?")
 
 def create_db():
     with conn.cursor() as cur:
@@ -28,35 +28,42 @@ def create_db():
 
 def add_client(first_name, last_name, email, phones=None):
     with conn.cursor() as cur:
-        cur.execute("""
-            INSERT INTO client (first_name, last_name, email)
-            VALUES (%s, %s, %s) RETURNING client_id;""", (first_name, last_name, email))
-        conn.commit()
-        client_id = cur.fetchone()[0]
-        if phones is not None:
-            phones_list = phones.strip().split(',')
+        result = find_client(first_name=first_name, last_name=last_name, email=email)
+        if result == 'По вашему запросу ничего не найдено':
             cur.execute("""
-                INSERT INTO phones (phone1, client_id)
-                VALUES (%s, %s);""", (phones_list[0], client_id))
+                INSERT INTO client (first_name, last_name, email)
+                VALUES (%s, %s, %s) RETURNING client_id;""", (first_name, last_name, email))
             conn.commit()
-            if len(phones_list) > 1:
-                for idx, phone_number in enumerate(phones_list[1:]):
-                    cur.execute("""
-                        UPDATE phones
-                        SET phone%s = %s
-                        WHERE client_id = %s;""", (idx + 2, phone_number, client_id))
-                    conn.commit()
-        cur.execute("""
-            SELECT * FROM client
-            WHERE client_id = %s;""", (client_id,))
-        client_new = cur.fetchone()
-        cur.execute("""
-            SELECT * FROM phones
-            WHERE client_id = %s;""", (client_id,))
-#        conn.commit()
-        phone_list_new = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
-        print(f'Новый клиент был успешно добавлен в базу данных')
-        return f'Данные о клиенте #{client_new[0]}: имя: {client_new[1]}, фамилия: {client_new[2]}, email: {client_new[3]}, телефоны: {(", ").join(phone_list_new)}'
+            client_id = cur.fetchone()[0]
+            if phones is not None:
+                phones_list = phones.strip().split(',')
+                cur.execute("""
+                    INSERT INTO phones (phone1, client_id)
+                    VALUES (%s, %s);""", (phones_list[0], client_id))
+                conn.commit()
+                if len(phones_list) > 1:
+                    for idx, phone_number in enumerate(phones_list[1:]):
+                        cur.execute("""
+                            UPDATE phones
+                            SET phone%s = %s
+                            WHERE client_id = %s;""", (idx + 2, phone_number, client_id))
+                        conn.commit()
+            cur.execute("""
+                SELECT * FROM client
+                WHERE client_id = %s;""", (client_id,))
+            client_new = cur.fetchone()
+            cur.execute("""
+                SELECT * FROM phones
+                WHERE client_id = %s;""", (client_id,))
+            phone_list_new = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
+            print(f'Новый клиент был успешно добавлен в базу данных')
+            return f'Данные о клиенте #{client_new[0]}: имя: {client_new[1]}, фамилия: {client_new[2]}, email: {client_new[3]}, телефоны: {(", ").join(phone_list_new)}'
+        else: # if result != 'По вашему запросу ничего не найдено': client is already in db
+            cur.execute("""
+                SELECT * FROM client
+                WHERE first_name = %s AND last_name = %s AND email = %s;""", (first_name, last_name, email))
+            client_found = cur.fetchone()
+            return f'Клиент #{client_found[0]} уже есть в базе данных'
     conn.close()
 
 def add_phone(client_id, phone_number):
@@ -83,7 +90,7 @@ def add_phone(client_id, phone_number):
                     WHERE client_id = %s;""", (client_id,))
                 phone_list_updated = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
                 return f'Актуальные номера телефонов клиента #{client_id}: {", ".join(phone_list_updated)}'
-        else: # if phone_list_check is None:
+        else: # if phone_list_check is None (client has no phone numbers):
             cur.execute("""
                 INSERT INTO phones (phone1, client_id)
                 VALUES (%s, %s);""", (phone_number, client_id))
@@ -95,28 +102,53 @@ def add_phone(client_id, phone_number):
 def change_client(client_id, first_name = None, last_name = None, email = None, phones = None):
     with conn.cursor() as cur:
         cur.execute("""
-            UPDATE client
-            SET first_name = %s, last_name = %s, email = %s
-            WHERE client_id = %s;""", (first_name, last_name, email, client_id))
-        conn.commit()
-        if phones is not None:
-            phones_list = phones.strip().split(',')
-            for idx, phone_number in enumerate(phones_list):
-                cur.execute("""
-                    UPDATE phones
-                    SET phone%s = %s
-                    WHERE client_id = %s;""", (idx + 1, phone_number, client_id))
-                conn.commit()
-        cur.execute("""
             SELECT * FROM client
             WHERE client_id = %s;""", (client_id,))
-        client_updated = cur.fetchone()
-        cur.execute("""
-            SELECT * FROM phones
-            WHERE client_id = %s;""", (client_id,))
-        phone_list_updated = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
-        print(f'Данные о клиенте были успешно изменены в базе данных')
-        return f'Актуальные данные о клиенте #{client_updated[0]}: имя: {client_updated[1]}, фамилия: {client_updated[2]}, email: {client_updated[3]}, телефоны: {(", ").join(phone_list_updated)}'
+        client_check = cur.fetchone()
+        if client_check is not None: # Client exists in db
+            if first_name is not None:
+                cur.execute("""
+                    UPDATE client
+                    SET first_name = %s
+                    WHERE client_id = %s;""", (first_name, client_id))
+                conn.commit()
+            if last_name is not None:
+                cur.execute("""
+                    UPDATE client
+                    SET last_name = %s
+                    WHERE client_id = %s;""", (last_name, client_id))
+                conn.commit()
+            if email is not None:
+                cur.execute("""
+                    UPDATE client
+                    SET email = %s
+                    WHERE client_id = %s;""", (email, client_id))
+                conn.commit()
+        #cur.execute("""
+        #     UPDATE client
+        #     SET first_name = %s, last_name = %s, email = %s
+        #     WHERE client_id = %s;""", (first_name, last_name, email, client_id))
+        # conn.commit()
+            if phones is not None:
+                phones_list = phones.strip().split(',')
+                for idx, phone_number in enumerate(phones_list):
+                    cur.execute("""
+                        UPDATE phones
+                        SET phone%s = %s
+                        WHERE client_id = %s;""", (idx + 1, phone_number, client_id))
+                    conn.commit()
+            cur.execute("""
+                SELECT * FROM client
+                WHERE client_id = %s;""", (client_id,))
+            client_updated = cur.fetchone()
+            cur.execute("""
+                SELECT * FROM phones
+                WHERE client_id = %s;""", (client_id,))
+            phone_list_updated = [phone for phone in list(cur.fetchone()[2:]) if phone is not None]
+            print(f'Данные о клиенте были успешно изменены в базе данных')
+            return f'Актуальные данные о клиенте #{client_updated[0]}: имя: {client_updated[1]}, фамилия: {client_updated[2]}, email: {client_updated[3]}, телефоны: {(", ").join(phone_list_updated)}'
+        else: # Client doesn't exist in db
+            return 'Клиент не найден в базе данных. Уточните client_id и повторите попытку поиска'
     conn.close()
 
 def delete_phone(client_id, phone):
@@ -246,15 +278,15 @@ def find_client(first_name=None, last_name=None, email=None, phone=None):
                     return f'По вашему запросу найден клиент #{client_found[0]}: имя: {client_found[1]}, фамилия: {client_found[2]}, email: {client_found[3]}, телефоны: {", ".join (phone_found_all[0][2:])}'
 
                 else: # if len(phone_found_all) > 1:
-                    return f'По вашему запросу найдено {len(phone_found_all)} клиента(ов). Уточните данные клиента и повоторите поиск'
+                    return f'По вашему запросу найдено {len(phone_found_all)} клиента(ов). Уточните данные клиента и повторите поиск'
     conn.commit()
 
-
-#print(create_db())
-#print(add_client('Виолетта' , 'Мазур', 'mouse2000@gmail.com', '+73333333333,+7444444444,+7222222222'))
-#print(change_client(58, 'Виолетта' , 'Мартыновка', 'mouse000000@mail.ru', '+7000000000,+7123456789,+7987654321'))
-#print(add_phone(59, '+7555555555'))
-#print(delete_phone(58, '+7222222222'))
-#print(delete_client(58))
-#print(find_client('Виолетта', 'Мартыновка', None, None))
+if __name__ == '__main__':
+    #print(create_db())
+    #print(add_client('Виолетта' , 'Мазур', 'mouse3000@gmail.com', '+73333333333,+7444444444,+7222222222'))
+    #print(change_client(58, 'Виолетта' , 'Мартыновка', 'mouse000000@mail.ru', '+7000000000,+7123456789,+7987654321'))
+    #print(add_phone(59, '+7555555555'))
+    #print(delete_phone(58, '+7222222222'))
+    #print(delete_client(58))
+    #print(find_client('Виолетта', None, None, None))
 

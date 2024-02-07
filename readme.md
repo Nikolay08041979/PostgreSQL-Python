@@ -26,4 +26,4 @@
 
 ✅ Функция, позволяющая найти клиента по его данным: имени, фамилии, email или телефону.
 
-#### [файл с кодом rel#2](https://github.com/Nikolay08041979/PostgreSQL-Python/blob/master/main.py)
+#### [файл с кодом rel#2](https://github.com/Nikolay08041979/PostgreSQL-Python/blob/master/hw_postgressql_python.py)
